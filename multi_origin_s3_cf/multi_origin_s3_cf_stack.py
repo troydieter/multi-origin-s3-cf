@@ -23,8 +23,8 @@ class MultiOriginS3CfStack(Stack):
         origin_access_identity = OriginAccessIdentity(self, f"oai-{stage}",
                                                       comment=f"{top_level_domain}-{stage}-oai"
                                                       )
-        primary_origin_bucket = self.create_and_grant_origin(stage, origin_access_identity, "primary_origin")
-        secondary_origin_bucket = self.create_and_grant_origin(stage, origin_access_identity, "secondary_origin")
+        primary_origin_bucket = self.create_and_grant_origin(stage, origin_access_identity, "primary-origin", top_level_domain)
+        secondary_origin_bucket = self.create_and_grant_origin(stage, origin_access_identity, "secondary-origin", top_level_domain)
 
         Distribution(self, f"{context['tld']}_distribution",
                      default_behavior=BehaviorOptions(origin=OriginGroup(
@@ -36,9 +36,10 @@ class MultiOriginS3CfStack(Stack):
                      certificate=primary_certificate
                      )
 
-    def create_origin_bucket(self, stage: str, bucket_name: str):
+    def create_origin_bucket(self, stage: str, bucket_name: str, top_level_domain):
         return Bucket(self,
-                      f"{bucket_name}-{stage}",
+                      f"{top_level_domain}-{bucket_name}-{stage}",
+                      bucket_name=f"{top_level_domain}-{bucket_name}-{stage}",
                       encryption=BucketEncryption.S3_MANAGED,
                       enforce_ssl=True,
                       public_read_access=False,
@@ -52,7 +53,7 @@ class MultiOriginS3CfStack(Stack):
                            subject_alternative_names=[f"{tld}", f"www.{tld}"],
                            validation=CertificateValidation.from_dns(hosted_zone=imported_zone))
 
-    def create_and_grant_origin(self, stage: str, origin_access_identity, bucket_name: str):
-        origin_bucket = self.create_origin_bucket(stage, bucket_name)
+    def create_and_grant_origin(self, stage: str, origin_access_identity, bucket_name: str, top_level_domain):
+        origin_bucket = self.create_origin_bucket(stage, bucket_name, top_level_domain)
         origin_bucket.grant_read(origin_access_identity)
         return origin_bucket
