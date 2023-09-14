@@ -28,7 +28,7 @@ class MultiOriginS3CfStack(Stack):
                          fallback_origin=S3Origin(secondary_origin_bucket)
                      )),
                      comment=f"{context['tld']}_distribution",
-                     domain_names=[f"*.{top_level_domain}", f"{top_level_domain}", f"www.${top_level_domain}"],
+                     domain_names=[f"*.{top_level_domain}", f"{top_level_domain}", f"www.{top_level_domain}"],
                      certificate=primary_certificate
                      )
 
