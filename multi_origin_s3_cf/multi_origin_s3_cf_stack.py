@@ -20,16 +20,16 @@ class MultiOriginS3CfStack(Stack):
         top_level_domain = context["tld"]
         primary_certificate = self.create_certificate(stage, cert_value=f"*.{top_level_domain}", tld=top_level_domain)
 
-        primary_origin_bucket = self.create_origin_bucket(stage, "primary_origin")
-        secondary_origin_bucket = self.create_origin_bucket(stage, "secondary_origin")
         origin_access_identity = OriginAccessIdentity(self, f"oai-{stage}",
                                                       comment=f"{top_level_domain}-{stage}-oai"
                                                       )
+        primary_origin_bucket = self.create_and_grant_origin(stage, origin_access_identity, "primary_origin")
+        secondary_origin_bucket = self.create_and_grant_origin(stage, origin_access_identity, "secondary_origin")
 
         Distribution(self, f"{context['tld']}_distribution",
                      default_behavior=BehaviorOptions(origin=OriginGroup(
-                         primary_origin=S3Origin(primary_origin_bucket),
-                         fallback_origin=S3Origin(secondary_origin_bucket)
+                         primary_origin=S3Origin(primary_origin_bucket, origin_access_identity=origin_access_identity),
+                         fallback_origin=S3Origin(secondary_origin_bucket, origin_access_identity=origin_access_identity)
                      )),
                      comment=f"{context['tld']}_distribution",
                      domain_names=[f"*.{top_level_domain}", f"{top_level_domain}", f"www.{top_level_domain}"],
@@ -51,3 +51,8 @@ class MultiOriginS3CfStack(Stack):
                            domain_name=cert_value,
                            subject_alternative_names=[f"{tld}", f"www.{tld}"],
                            validation=CertificateValidation.from_dns(hosted_zone=imported_zone))
+
+    def create_and_grant_origin(self, stage: str, origin_access_identity, bucket_name: str):
+        origin_bucket = self.create_origin_bucket(stage, bucket_name)
+        origin_bucket.grant_read(origin_access_identity)
+        return origin_bucket
